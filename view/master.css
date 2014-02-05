@@ -1,0 +1,28 @@
+
+/* content styling */
+
+.ui-li-thumb {
+  left: 6px;
+  top: 10px;
+  width: 80px;
+  height: 80px;
+}
+
+.thumbnailColumn
+{
+  float: left;
+  margin-right: 10px;
+}
+
+.thumbnail
+{
+  width: 80px;
+  height: 80px;
+  border: 1px solid white;
+}
+
+.time {
+  color: #666;
+  margin-top: 10px;
+}
+

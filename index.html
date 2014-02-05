@@ -1,0 +1,155 @@
+﻿<!doctype html>
+<html>
+<head>
+  <!-- http://msdn.microsoft.com/en-us/library/ff462082(VS.92).aspx -->
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0" />
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+
+  <title>Cordova Twitter Search</title>
+
+  <link rel="stylesheet" href="view/jquery.mobile-1.0rc2.css" type="text/css" media="screen" title="no title" charset="utf-8" />  
+  <link rel="stylesheet" href="view/master.css" type="text/css" media="screen" title="no title" charset="utf-8" />  
+  
+  <script type="text/javascript" charset="utf-8" src="lib/jquery-1.6.4.js"></script>
+  <script type="text/javascript" charset="utf-8" src="lib/jquery.tmpl.js"></script>
+  <script type="text/javascript" charset="utf-8" src="lib/knockout-2.0.0.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="viewModel/ApplicationViewModel.js"></script>
+  <script type="text/javascript" charset="utf-8" src="viewModel/TweetViewModel.js"></script>
+  <script type="text/javascript" charset="utf-8" src="viewModel/TwitterSearchViewModel.js"></script>
+  <script type="text/javascript" charset="utf-8" src="viewModel/SearchResultsViewModel.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="app.js"></script>
+  
+  <script type="text/javascript" charset="utf-8">
+    // unfortunately the CSS styling that shows the topmost view does not work in Chrome browsers. This possibly relates
+    // to this bug: http://code.google.com/p/chromium/issues/detail?id=71052
+    // as a workaround, the styling is applied manually when the view-model back stack changes
+    function applyCssProperly() {
+      $(".app > div").css("display", "none");
+      $(".app>*:last-child").css("display", "block");
+    }
+    function afterViewRender () {     
+      applyCssProperly();
+    }
+    function beforeViewRemove(domNode) {
+       $(domNode).remove();
+       applyCssProperly();
+    }
+  </script>
+</head>
+<body class="ui-mobile-viewport">
+
+  <script type=text/x-jquery-tmpl" charset="utf-8" id="twitterSearchView">
+    <div>
+      <div class="ui-input-search ui-shadow-inset ui-btn-corner-all ui-btn-shadow ui-icon-searchfield ui-body-c">
+      <input type="text"
+             class="ui-input-text ui-body-c"
+             data-bind="value: searchTerm, valueUpdate: 'afterkeydown'" />
+      </div>
+
+      <!-- the search button -->
+      <div class="ui-btn ui-btn-inline ui-btn-corner-all ui-shadow ui-btn-up-c">
+          <span class="ui-btn-inner ui-btn-corner-all">
+            <span class="ui-btn-text">Go</span>
+          </span>
+          <input class="ui-btn-hidden" type="button" value="Go"
+                  data-bind="enable: searchTerm().length > 0 && isSearching() == false, 
+                            click: search"/>
+      </div>
+
+      <p class="userMessage"
+         data-bind="text:userMessage"/>
+
+      <div data-bind="visible: recentSearches().length > 0">
+        <h3>Recent Searches</h3>
+        <ul class="ui-listview ui-listview-inset ui-shadow"
+            data-bind="template: {name: 'recentSearchTermView',
+                                  foreach: recentSearches}"> </ul>
+      </div>
+    </div>
+  </script>
+
+  <script type=text/x-jquery-tmpl" charset="utf-8" id="recentSearchTermView">
+    <li class="ui-btn ui-btn-icon-right ui-li-has-arrow ui-li ui-btn-up-c"        
+        data-bind="click: $parent.recentSearchClicked">
+      <div class="ui-btn-inner ui-li" aria-hidden="true">
+        <div class="ui-btn-text">
+          <a class="ui-link-inherit" href="#">
+            <span data-bind="text: $data"/>
+          </a>
+        </div>
+        <span class="ui-icon ui-icon-arrow-r ui-icon-shadow"></span>
+      </div>
+    </li>
+  </script>
+
+  <script type=text/x-jquery-tmpl" charset="utf-8" id="searchResultsView">
+    <div>
+      <ul class="ui-listview ui-listview-inset ui-shadow"
+          data-bind="template: {name: 'tweetView',
+                                foreach: tweets}"> </ul>
+    </div>
+  </script>
+
+  <script type="text/x-jquery-tmpl" charset="utf-8" id="tweetView">
+    <li class="ui-btn ui-btn-icon-right ui-li-has-arrow ui-li ui-li-has-thumb ui-btn-up-c"
+         data-bind="click: select">
+      <div class="ui-btn-inner ui-li">
+        <div class="ui-btn-text">
+          <a class="ui-link-inherit" href="#">
+            <img class="ui-li-thumb"
+                 data-bind="attr: { src: thumbnail }">
+            
+            <h3 class="ui-li-heading">
+               <span data-bind="text: author"/>
+            </h3>
+            <p class="ui-li-desc"><span data-bind="text: text"/></p>
+            <p class="ui-li-desc"><span data-bind="text: time"/></p>
+          </a>
+        </div>
+        <span class="ui-icon ui-icon-arrow-r ui-icon-shadow"></span>
+      </div>
+    </li>
+  </script>
+
+  <script type="text/x-jquery-tmpl" charset="utf-8" id="tweetDetailView">
+    <div class="tweet detailView">
+      <div class="thumbnailColumn">
+        <img data-bind="attr: { src: thumbnail }"
+             class="thumbnail"/>
+      </div>
+      <div class="detailsColumn">
+        <h2 data-bind="text: author"/> 
+        <div class="text" data-bind="text: text"/> 
+        <div class="time" data-bind="text: time"/> 
+      </div>
+    </div>
+  </script>
+
+  <div class="ui-page ui-body-c ui-page-active"  style="display:block">
+    <div class="ui-header ui-bar-b">    
+      <!-- back button -->
+      <a class="ui-btn-left ui-btn ui-btn-icon-left ui-btn-corner-all ui-shadow ui-btn-up-b"
+         data-bind="click: back,
+                    visible: backButtonRequired">
+        <span class="ui-btn-inner ui-btn-corner-all">
+          <span class="ui-btn-text">Back</span>
+          <span class="ui-icon ui-icon-arrow-l ui-icon-shadow"></span>
+        </span>
+      </a> 
+
+       <h1 class="ui-title">Twitter Search</h1>
+    </div>
+
+   
+    <div class="ui-content">
+      <div class="app" 
+           data-bind="template: {name: templateSelector,
+                                          foreach: viewModelBackStack,
+                                          afterRender: afterViewRender, beforeRemove: beforeViewRemove}">
+      </div>
+    </div>
+  </div>
+</body>
+</html>
